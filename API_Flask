@@ -12,7 +12,7 @@ from threading import Thread
 app = Flask(__name__)
 
 # โหลดโมเดล YOLO
-model_path = 'pt_model/best.pt'
+model_path = 'pt_model/matchine.pt'
 model = YOLO(model_path)
 
 # ฟังก์ชันส่งผลลัพธ์กลับไปยังผู้ใช้
@@ -27,11 +27,12 @@ def predict_image(image_path):
     image = np.array(image)
 
     # ใช้ YOLO ทำการทำนาย
-    results = model.predict(source=image, imgsz=640, conf=0.7)
+    results = model.predict(source=image, imgsz=640, conf=0.3)
 
     result_data = []
     
-    if results and hasattr(results[0], 'boxes'):
+    if results and hasattr(results[0], 'boxes') and len(results[0].boxes) > 0:
+        #ถ้าไม่มีวัตถุ
         for det in results[0].boxes:
             class_idx = int(det.cls)
             class_name = model.model.names[class_idx]  # ป้องกัน KeyError
@@ -58,13 +59,6 @@ def process_predictions(image_names, image_directory, save_directory):
 
     for image_name in image_names:
         image_path = os.path.join(image_directory, image_name)
-
-        if not os.path.exists(image_path):
-            all_results.append({
-                "image": image_name,
-                "status": "❌ ตรวจสอบชื่อไฟล์อีกครั้ง"
-            })
-            continue
 
         # ทำนาย
         result_data, results = predict_image(image_path)
@@ -135,7 +129,22 @@ def predict():
         image_names = data['image_names']
         print(f"📥 ได้รับข้อมูลแล้ว: {image_names}")
 
-        # ส่งค่ากลับก่อนการทำนาย
+        # ตรวจสอบชื่อไฟล์ว่าใน 'image_names' มีไฟล์ที่มีอยู่ใน image_directory หรือไม่
+        invalid_files = []
+        for image_name in image_names:
+            image_path = os.path.join(image_directory, image_name)
+            if not os.path.exists(image_path):
+                invalid_files.append(image_name)
+
+        if invalid_files:
+            # หากไม่พบไฟล์ ให้ส่งกลับรายชื่อไฟล์ที่ไม่พบ
+            return jsonify({
+                "error": "ไม่พบไฟล์ใน directory โปรดตรวจสอบอีกครั้ง",
+                "missung_file": invalid_files
+                }), 400
+
+
+        # ส่งค่ากลับก่อนการทำนา
         response = jsonify({"message": f"📥 ได้รับข้อมูลแล้ว กำลังทำการทำนาย...."})
         response.status_code = 200
 
