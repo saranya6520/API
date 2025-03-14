@@ -1,0 +1,1 @@
+OrderedDict([('class', 'NG'), ('confidence', '0.00%'), ('bbox', [0, 0, 0, 0])])
